@@ -98,18 +98,14 @@ def track_task(task_name: str, task_idx: int, goal: str, max_steps: int) -> Task
     )
 
 
-def write_task_result(
+def get_task_result(
     task_result: TaskResult,
     agent: DroidAgent,
     score: float = 0.0,
     agent_result: Dict[str, Any] | None = None,
     error: str | None = None,
     device: str = None,
-):
-    logger.debug(
-        f"Writing task result for {task_result.task_name} {task_result.task_idx} with score {score}. Agent result: {json.dumps(agent_result)}"
-    )
-
+) -> TaskResult:
     task_result.success = score
 
     if agent_result is not None:
@@ -131,6 +127,25 @@ def write_task_result(
     task_result.reasoning = agent.reasoning
     if device is not None:
         task_result.device = device
+
+    return task_result
+
+
+def write_task_result(
+    task_result: TaskResult,
+    agent: DroidAgent,
+    score: float = 0.0,
+    agent_result: Dict[str, Any] | None = None,
+    error: str | None = None,
+    device: str = None,
+):
+    logger.debug(
+        f"Writing task result for {task_result.task_name} {task_result.task_idx} with score {score}. Agent result: {json.dumps(agent_result)}"
+    )
+
+    task_result = get_task_result(
+        task_result, agent, score, agent_result, error, device
+    )
 
     dpath = get_task_result_path(task_result.task_name)
     fpath = dpath / "result.json"

@@ -11,7 +11,7 @@ logger.level = logging.DEBUG
 class AndroidWorldTools(AdbTools):
     def __init__(self, serial: str, client: Optional[AndroidEnvClient] = None) -> None:
         logger.debug("Initializing AndroidWorldTools")
-        super().__init__(serial)
+        super().__init__(serial, use_tcp=True)
         logger.debug("AdbTools initialized")
         self.client = client or AndroidEnvClient()
         logger.debug(f"AndroidWorldTools initialized with {self.client.base_url}")
