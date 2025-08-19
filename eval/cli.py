@@ -2,13 +2,15 @@ import click
 import logging
 import asyncio
 import functools
+import textwrap
 
 from eval.env.client import AndroidEnvClient
 from eval.env.boot import boot_environment
 from eval.runner import run_task_on_env
 from eval.tracker import write_task_result
 from eval.portal.keepalive import disable_overlay_once
-from droidrun import load_llm
+from droidrun import load_llm, __version__ as droidrun_version
+from android_world import __version__ as android_world_version
 from adbutils import adb
 
 logging.basicConfig(
@@ -31,9 +33,33 @@ def make_sync(func):
     return wrapper
 
 
+def print_banner():
+    logger.info(
+        textwrap.dedent(
+            """
+
+  ██████╗ ██████╗  ██████╗ ██╗██████╗ ██████╗ ██╗   ██╗███╗   ██╗
+  ██╔══██╗██╔══██╗██╔═══██╗██║██╔══██╗██╔══██╗██║   ██║████╗  ██║
+  ██║  ██║██████╔╝██║   ██║██║██║  ██║██████╔╝██║   ██║██╔██╗ ██║
+  ██║  ██║██╔══██╗██║   ██║██║██║  ██║██╔══██╗██║   ██║██║╚██╗██║
+  ██████╔╝██║  ██║╚██████╔╝██║██████╔╝██║  ██║╚██████╔╝██║ ╚████║
+  ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ Android World Benchmark
+"""
+        )
+    )
+
+
 @click.group()
 def cli():
     pass
+
+
+@cli.command()
+def version():
+    print_banner()
+    logger.info(f"Droidrun Android World Benchmark --- v0.1.0")
+    logger.info(f"Droidrun --------------------------- v{droidrun_version}")
+    logger.info(f"Android World ---------------------- v{android_world_version}")
 
 
 @cli.command()

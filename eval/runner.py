@@ -7,7 +7,6 @@ from llama_index.core.workflow import WorkflowTimeoutError
 from llama_index.core.llms import LLM
 from droidrun import DroidAgent
 
-from eval.portal.accessibility import enable_accessibility_service
 from eval.env.client import AndroidEnvClient
 from eval.tools import AndroidWorldTools
 from eval.tracker import (
@@ -51,16 +50,6 @@ async def run_task_on_env(
         logger.debug("Task initialized successfully")
     except Exception as e:
         raise RuntimeError(f"Error initializing task {task_name} {task_idx}: {e}")
-
-    # try:
-    #     logger.debug("Enabling accessibility service...")
-    #     await enable_accessibility_service(
-    #         device_serial=device_serial,
-    #         disable_first=True,
-    #     )
-    #     logger.debug("Accessibility service enabled")
-    # except Exception as e:
-    #     raise RuntimeError(f"Error enabling accessibility service: {e}")
 
     with KeepOverlayDisabled(device_serial):
         logger.info(
