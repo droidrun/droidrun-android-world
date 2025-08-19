@@ -205,3 +205,93 @@ AndroidWorld tasks span various applications and interaction types:
 - **And more...**
 
 Each task is designed to test agent capabilities across different UI interaction patterns and complexity levels. 
+
+---
+
+
+## Installation
+
+1. Set up the Android Emulator
+   1. Download Android Studio [here](https://developer.android.com/studio?gad_source=1&gclid=Cj0KCQjw3ZayBhDRARIsAPWzx8oLcadBD0vAq8xmUutaunLGSzhgEtLz4xVZ_SpV4G0xJazS7LxQkDsaAuveEALw_wcB&gclsrc=aw.ds)
+   2. Create an Android Virtual Device (AVD) by following these instructions. For hardware select **Pixel 6**, for System Image select **Tiramisu, API Level 33**, and choose AVD name as **AndroidWorldAvd**. [Watch the setup video.](https://github.com/google-research/android_world/assets/162379927/efc33980-8b36-44be-bb2b-a92d4c334a50)
+
+1. Launch the Android Emulator from the command line
+
+    Launch the emulator from the command line, not using the Android Studio UI,
+    with the `-grpc 8554` flag which is needed communication with accessibility
+    forwarding app.
+
+    ```bash
+    # Typically it's located in ~/Android/Sdk/emulator/emulator or
+    # ~/Library/Android/sdk/emulator/emulator
+    EMULATOR_NAME=AndroidWorldAvd # From previous step
+    ~/Library/Android/sdk/emulator/emulator -avd $EMULATOR_NAME -no-snapshot -grpc 8554
+    ```
+
+1. [Optional] It's recommended to use `conda`, which you can download [here](https://docs.anaconda.com/free/miniconda/miniconda-install/).
+
+    ```
+    conda create -n android_world python=3.11.8
+    conda activate android_world
+    ```
+
+**check if neccessary**
+1. Install AndroidWorld. *Note: Python 3.11 or above is required.*
+
+    ```python
+    git clone https://github.com/google-research/android_world.git
+    cd ./android_world
+    pip install -r requirements.txt
+    python setup.py install
+    ```
+
+1. Add model provider APIs as environment variables.
+
+    ```bash
+    # Add to .bashrc.
+    export OPENAI_API_KEY=your-key
+    export GCP_API_KEY=your-key
+    ```
+
+1. Install `ffmpeg`, if not already installed.
+
+    ```bash
+    # Linux (Ubuntu/Debian)
+    # sudo apt update && sudo apt install ffmpeg
+
+    # macOS
+    brew install ffmpeg
+    ```
+
+## Running
+
+1. Launch the Android Emulator from the command line
+
+    Launch the emulator from the command line, not using the Android Studio UI,
+    with the `-grpc 8554` flag which is needed communication with accessibility
+    forwarding app.
+
+    ```bash
+    # Typically it's located in ~/Android/Sdk/emulator/emulator or
+    # ~/Library/Android/sdk/emulator/emulator
+    EMULATOR_NAME=AndroidWorldAvd # From previous step
+    ~/Library/Android/sdk/emulator/emulator -avd $EMULATOR_NAME -no-snapshot -grpc 8554
+    ```
+
+1. Start the Android World Server
+
+    ```bash
+    cd android_world && python -m server.android_server
+    ```
+
+1. Run the cli
+
+    ```bash
+    python -m eval.cli run --env-url http://localhost:5000 --task BrowserMultiply --reasoning --debug
+    ```
+
+## Issues:
+- enable a11y service on every task is not working properly and causing the google a11y service to crash
+- KeepOverlayDisabled not working (might not be executing)
+- trajectory is not being safed
+- task result has wrong task id

@@ -24,7 +24,7 @@ setup(
     classifiers=[],
     entry_points={
         "console_scripts": {
-            "droidrun-android-world=eval.android_world_bench:main",
+            "droidrun-android-world=eval.cli:cli",
         },
     },
 )

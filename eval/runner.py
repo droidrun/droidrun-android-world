@@ -8,7 +8,7 @@ from llama_index.core.llms import LLM
 from droidrun import DroidAgent
 
 from eval.portal.accessibility import enable_accessibility_service
-from eval.android_env_client import AndroidEnvClient
+from eval.env.client import AndroidEnvClient
 from eval.tools import AndroidWorldTools
 from eval.tracker import (
     track_task,
@@ -31,7 +31,7 @@ async def run_task_on_env(
     vision: bool,
     reasoning: bool,
     reflection: bool,
-    # tracing: bool,
+    tracing: bool,
     debug: bool,
 ) -> Tuple[TaskResult, Exception | None]:
     env.reset(go_home=True)
@@ -52,19 +52,19 @@ async def run_task_on_env(
     except Exception as e:
         raise RuntimeError(f"Error initializing task {task_name} {task_idx}: {e}")
 
-    try:
-        logger.debug("Enabling accessibility service...")
-        await enable_accessibility_service(
-            device_serial=device_serial,
-            disable_first=True,
-        )
-        logger.debug("Accessibility service enabled")
-    except Exception as e:
-        raise RuntimeError(f"Error enabling accessibility service: {e}")
+    # try:
+    #     logger.debug("Enabling accessibility service...")
+    #     await enable_accessibility_service(
+    #         device_serial=device_serial,
+    #         disable_first=True,
+    #     )
+    #     logger.debug("Accessibility service enabled")
+    # except Exception as e:
+    #     raise RuntimeError(f"Error enabling accessibility service: {e}")
 
     with KeepOverlayDisabled(device_serial):
         logger.info(
-            f"Initializing DroidAgent with {max_steps} steps, {max_retries} retries, and {timeout} timeout"
+            f"Initializing DroidAgent with {max_steps} steps and {timeout} timeout"
         )
 
         tools = AndroidWorldTools(device_serial, env)
@@ -73,12 +73,11 @@ async def run_task_on_env(
             llm=llm,
             tools=tools,
             reasoning=reasoning,
-            enable_tracing=False,
+            enable_tracing=tracing,
             debug=debug,
             max_steps=max_steps,
-            max_retries=max_retries,
             timeout=timeout,
-            save_trajectories=False,
+            save_trajectories="none",
             reflection=reflection,
             vision=vision,
         )

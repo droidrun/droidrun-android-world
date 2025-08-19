@@ -1,6 +1,6 @@
 from droidrun.tools import AdbTools
 from typing import Optional
-from eval.android_env_client import AndroidEnvClient
+from eval.env.client import AndroidEnvClient
 from android_world.env import json_action
 import logging
 

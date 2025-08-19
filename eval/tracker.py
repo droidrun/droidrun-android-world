@@ -133,18 +133,16 @@ def get_task_result(
 
 def write_task_result(
     task_result: TaskResult,
-    agent: DroidAgent,
-    score: float = 0.0,
-    agent_result: Dict[str, Any] | None = None,
-    error: str | None = None,
-    device: str = None,
 ):
-    logger.debug(
-        f"Writing task result for {task_result.task_name} {task_result.task_idx} with score {score}. Agent result: {json.dumps(agent_result)}"
+    agent_result_str = json.dumps(
+        {
+            "success": task_result.agent_success,
+            "steps": task_result.steps_taken,
+            "output": task_result.final_thought,
+        }
     )
-
-    task_result = get_task_result(
-        task_result, agent, score, agent_result, error, device
+    logger.debug(
+        f"Writing task result for {task_result.task_name} {task_result.task_idx} with score {task_result.success}. Agent result: {agent_result_str}"
     )
 
     dpath = get_task_result_path(task_result.task_name)
