@@ -4,8 +4,7 @@ from eval.env.client import AndroidEnvClient
 from android_world.env import json_action
 import logging
 
-logger = logging.getLogger("android_world_tools")
-logger.level = logging.DEBUG
+logger = logging.getLogger(__name__)
 
 
 class AndroidWorldTools(AdbTools):

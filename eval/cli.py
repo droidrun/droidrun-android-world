@@ -4,17 +4,23 @@ import asyncio
 import functools
 
 from eval.env.client import AndroidEnvClient
+from eval.env.boot import boot_environment
 from eval.runner import run_task_on_env
 from eval.tracker import write_task_result
+from eval.portal.keepalive import disable_overlay_once
 from droidrun import load_llm
+from adbutils import adb
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger("android_world_bench")
-logger.level = logging.DEBUG
-logging.getLogger("droidrun").level = logging.DEBUG
-logging.getLogger("android_world_tools").level = logging.DEBUG
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logging.getLogger("droidrun").setLevel(logging.DEBUG)
+logging.getLogger("eval.env.boot").setLevel(logging.DEBUG)
+logging.getLogger("eval.env.client").setLevel(logging.DEBUG)
+logging.getLogger("eval.tools").setLevel(logging.DEBUG)
+logging.getLogger("eval.runner").setLevel(logging.DEBUG)
 
 
 def make_sync(func):
@@ -42,6 +48,35 @@ def list_tasks(env_url):
     tasks = env.get_suite_task_list()
     for i, task in enumerate(tasks):
         logger.info(f"{i}: {task}")
+
+
+@cli.command()
+@click.option(
+    "--env-url",
+    default="http://localhost:5000",
+    help="Android World Environment URL to use.",
+)
+@click.option("--env-serial", default="emulator-5554", help="Device serial to use.")
+def check(env_url, env_serial):
+    env = AndroidEnvClient(env_url)
+    try:
+        boot_environment(env, env_serial)
+        logger.info("Environment is healthy")
+    except Exception as e:
+        logger.error(f"Error booting environment: {e}")
+        exit(1)
+
+
+@cli.command()
+@click.option("--env-serial", default="emulator-5554", help="Device serial to use.")
+def disable_overlay(env_serial):
+    try:
+        device = adb.device(env_serial)
+        disable_overlay_once(device)
+        logger.info("Overlay disabled")
+    except Exception as e:
+        logger.error(f"Error disabling overlay: {e}")
+        exit(1)
 
 
 @cli.command()
@@ -92,17 +127,11 @@ async def run(
 ):
     env = AndroidEnvClient(env_url)
 
-    async def wait_for_env():
-        logger.debug("Waiting for environment to be healthy...")
-        while True:
-            if not env.health():
-                print("Environment is not healthy, waiting for 1 second...")
-                await asyncio.sleep(1)
-            else:
-                break
-        logger.debug("Environment is healthy")
-
-    await wait_for_env()
+    try:
+        boot_environment(env, env_serial)
+    except Exception as e:
+        logger.error(f"Error booting environment: {e}")
+        exit(1)
 
     logger.debug("Resetting environment...")
     env.reset(go_home=True)

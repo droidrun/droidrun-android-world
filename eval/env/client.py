@@ -38,7 +38,7 @@ import numpy as np
 import pydantic
 import requests
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 Params = dict[str, int | str]
@@ -104,7 +104,7 @@ class AndroidEnvClient:
         )
         response.raise_for_status()
         return response.json()["auxiliaries"]
-    
+
     def get_packages(self) -> list[str]:
         """Gets the current packages of the environment."""
         response = requests.get(f"{self.base_url}/packages")
@@ -126,7 +126,8 @@ class AndroidEnvClient:
     def get_suite_task_list(self, min_index: int = 0, max_index: int = -1) -> list[str]:
         """Gets the list of tasks in the suite."""
         response = requests.get(
-            f"{self.base_url}/suite/task_list", params={"min_index": min_index, "max_index": max_index}
+            f"{self.base_url}/suite/task_list",
+            params={"min_index": min_index, "max_index": max_index},
         )
         response.raise_for_status()
         return response.json()["task_list"]

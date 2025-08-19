@@ -17,7 +17,7 @@ from eval.tracker import (
 )
 from eval.portal.keepalive import KeepOverlayDisabled
 
-logger = logging.getLogger("runner")
+logger = logging.getLogger(__name__)
 
 
 async def run_task_on_env(
