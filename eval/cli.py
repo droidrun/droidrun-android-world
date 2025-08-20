@@ -157,6 +157,7 @@ async def run(
         boot_environment(env, env_serial)
     except Exception as e:
         logger.error(f"Error booting environment: {e}")
+        logger.info("Please check if the environment is running and accessible. Keep on trying or restart the environment")
         exit(1)
 
     logger.debug("Resetting environment...")
@@ -170,8 +171,8 @@ async def run(
     logger.debug("Suite reinitialized successfully")
 
     logger.debug("Fetching task list...")
+    all_tasks = env.get_suite_task_list()
     if len(task) > 0:
-        all_tasks = env.get_suite_task_list()
         task_list = [task for task in task if task in all_tasks]
     else:
         task_list = env.get_suite_task_list(min_task_idx, max_task_idx)
@@ -184,6 +185,7 @@ async def run(
     logger.debug("LLM loaded successfully")
 
     for task_name in task_list:
+        task_id = all_tasks.index(task_name)
         num_tasks = env.get_suite_task_length(task_name)
 
         for task_idx in range(num_tasks):
@@ -192,6 +194,7 @@ async def run(
                 env,
                 env_serial,
                 llm,
+                task_id,
                 task_name,
                 task_idx,
                 max_steps_multiplier,

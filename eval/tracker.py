@@ -5,8 +5,10 @@ import logging
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from droidrun import DroidAgent
+from droidrun.agent.utils.trajectory import get_trajectory_statistics
 from pathlib import Path
 import requests
+import time
 
 logger = logging.getLogger("tracker")
 
@@ -45,15 +47,13 @@ def update_summary():
 
 
 @dataclass
-class TrajectoryItem:
-    pass
-
-
-@dataclass
 class TrajectoryStats:
     total_steps: int = field(default=0)
+    step_types: Dict[str, int] = field(default_factory=dict)
     planning_steps: int = field(default=0)
     execution_steps: int = field(default=0)
+    successful_executions: int = field(default=0)
+    failed_executions: int = field(default=0)
 
 
 # legacy result format used in web repr
@@ -73,7 +73,7 @@ class TaskResult:
     logs: List[str] = field(default_factory=list)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     error: str | None = field(default=None)
-    trajectory: List[TrajectoryItem] = field(default_factory=list)
+    trajectory: List[Dict[str, Any]] = field(default_factory=list)
     trajectory_stats: TrajectoryStats = field(default_factory=TrajectoryStats)
     device: str = field(default="")
 
@@ -88,9 +88,11 @@ def get_task_result_path(task_name: str) -> Path:
     return opath
 
 
-def track_task(task_name: str, task_idx: int, goal: str, max_steps: int) -> TaskResult:
+def track_task(
+    task_id: int, task_name: str, task_idx: int, goal: str, max_steps: int
+) -> TaskResult:
     return TaskResult(
-        task_id=0,
+        task_id=task_id,
         task_name=task_name,
         task_idx=task_idx,
         task_description=goal,
@@ -120,9 +122,9 @@ def get_task_result(
     task_result.execution_time = (datetime.now() - started_at).total_seconds()
 
     task_result.logs = []
-    task_result.trajectory = []
+    task_result.trajectory = agent.trajectory.get_trajectory()
     task_result.trajectory_stats = TrajectoryStats(
-        total_steps=0, execution_steps=0, planning_steps=0
+        **get_trajectory_statistics(task_result.trajectory)
     )
     task_result.reasoning = agent.reasoning
     if device is not None:
@@ -154,15 +156,31 @@ def write_task_result(
     except Exception as e:
         logger.error(f"Error writing task result to {fpath}: {e}")
 
+    write_task_trajectory(
+        task_result.task_name, task_result.task_idx, task_result.trajectory
+    )
+
     send_discord_task_result(task_result)
 
 
-def write_task_trajectory(task_name: str, task_idx: int, agent: DroidAgent):
+def write_task_trajectory(
+    task_name: str, task_idx: int, trajectory: List[Dict[str, Any]]
+):
     logger.debug(f"Writing task trajectory for {task_name} {task_idx}.")
 
     dpath = get_task_result_path(task_name)
-    trk_path = agent.trajectory.save_trajectory(dpath)
-    logger.debug(f"Wrote task {task_name} trajectory to {trk_path}")
+
+    os.makedirs(dpath, exist_ok=True)
+
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    trajectory_folder = os.path.join(dpath, f"trajectory_{timestamp}")
+    os.makedirs(trajectory_folder, exist_ok=True)
+
+    trajectory_json_path = os.path.join(trajectory_folder, "trajectory.json")
+    with open(trajectory_json_path, "w") as f:
+        json.dump(trajectory, f, indent=2)
+
+    logger.debug(f"Wrote task {task_name} trajectory to {trajectory_json_path}")
 
 
 def get_embed_author(device: str) -> dict:

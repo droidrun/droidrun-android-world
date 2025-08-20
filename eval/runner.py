@@ -23,6 +23,7 @@ async def run_task_on_env(
     env: AndroidEnvClient,
     device_serial: str,
     llm: LLM,
+    task_id: int,
     task_name: str,
     task_idx: int,
     max_steps_multiplier: int,
@@ -73,7 +74,7 @@ async def run_task_on_env(
 
         logger.debug("DroidAgent initialized successfully")
 
-        task_result = track_task(task_name, task_idx, task_goal, max_steps)
+        task_result = track_task(task_id, task_name, task_idx, task_goal, max_steps)
 
         try:
 

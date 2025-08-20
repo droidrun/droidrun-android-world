@@ -7,6 +7,7 @@ from droidrun.portal import (
     ping_portal,
     ping_portal_content,
     ping_portal_tcp,
+    set_overlay_offset,
     A11Y_SERVICE_NAME as DROIDRUN_A11Y_SERVICE_NAME,
 )
 from adbutils import adb
@@ -18,6 +19,7 @@ GOOGLE_A11Y_SERVICE_NAME = "com.google.androidenv.accessibilityforwarder/com.goo
 DROIDRUN_X_GOOGLE_A11Y_SERVICE_NAME = (
     f"{DROIDRUN_A11Y_SERVICE_NAME}:{GOOGLE_A11Y_SERVICE_NAME}"
 )
+DEFAULT_OVERLAY_OFFSET = -126
 
 
 def install_portal(serial: str):
@@ -47,6 +49,12 @@ def check_portal(serial: str):
         device, service_name=DROIDRUN_X_GOOGLE_A11Y_SERVICE_NAME
     ):
         raise RuntimeError("Accessibility settings invalid")
+    
+    try:
+        set_overlay_offset(device, DEFAULT_OVERLAY_OFFSET)
+        logger.info("Overlay offset set successfully")
+    except Exception:
+        raise RuntimeError("Failed to set overlay offset")
 
     try:
         ping_portal(device)
