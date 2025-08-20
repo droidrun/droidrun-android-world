@@ -18,11 +18,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-logging.getLogger("droidrun").setLevel(logging.DEBUG)
+droidrun_logger = logging.getLogger("droidrun")
+droidrun_logger.setLevel(logging.DEBUG)
 logging.getLogger("eval.env.boot").setLevel(logging.DEBUG)
 logging.getLogger("eval.env.client").setLevel(logging.DEBUG)
 logging.getLogger("eval.tools").setLevel(logging.DEBUG)
 logging.getLogger("eval.runner").setLevel(logging.DEBUG)
+logging.getLogger("eval.portal.keepalive").setLevel(logging.DEBUG)
 
 
 def make_sync(func):
@@ -157,7 +159,9 @@ async def run(
         boot_environment(env, env_serial)
     except Exception as e:
         logger.error(f"Error booting environment: {e}")
-        logger.info("Please check if the environment is running and accessible. Keep on trying or restart the environment")
+        logger.info(
+            "Please check if the environment is running and accessible. Keep on trying or restart the environment"
+        )
         exit(1)
 
     logger.debug("Resetting environment...")
@@ -189,6 +193,15 @@ async def run(
         num_tasks = env.get_suite_task_length(task_name)
 
         for task_idx in range(num_tasks):
+            try:
+                boot_environment(env, env_serial)
+            except Exception as e:
+                logger.error(f"Error booting environment: {e}")
+                logger.info(
+                    "Please check if the environment is running and accessible. Keep on trying or restart the environment"
+                )
+                continue
+
             logger.info(f"Running task {task_name} {task_idx}...")
             res, e = await run_task_on_env(
                 env,

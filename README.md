@@ -2,68 +2,139 @@
 
 This module provides tools for benchmarking DroidRun using the [AndroidWorld](https://github.com/droidrun/android_world) ([upstream](https://github.com/google-research/android_world)) task suite - a collection of 116 diverse tasks across 20 Android applications.
 
-## Local Setup
+---
 
-### Prerequisites
 
-1. **Python Version Requirements**
-   - **Python 3.12** is required
-   - Python 3.13 is currently not supported due to compatibility issues with pandas
+## 1. Environment Setup
 
-2. **Android Emulator**
-   - Download [Android Studio](https://developer.android.com/studio)
-   - Create an Android Virtual Device (AVD):
-     - Hardware: **Pixel 6**
-     - System Image: **Tiramisu, API Level 33**
-     - AVD name: **AndroidWorldAvd**
+Reference: [android_world official documentation](https://github.com/google-research/android_world/tree/main#installation).
 
-3. Install `ffmpeg`, if not already installed.
+### 1.1 Install Android Emulator
 
-    ```bash
-    # Linux (Ubuntu/Debian)
-    # sudo apt update && sudo apt install ffmpeg
+- Download [Android Studio](https://developer.android.com/studio)  
+- Create an Android Virtual Device (AVD):
+  - Hardware: **Pixel 6**  
+  - System Image: **Tiramisu, API Level 33**  
+  - AVD Name: **AndroidWorldAvd**  
+- [Setup video tutorial](https://github.com/google-research/android_world/assets/162379927/efc33980-8b36-44be-bb2b-a92d4c334a50)
 
-    # macOS
-    brew install ffmpeg
-    ```
+### 1.2 Launch Android Emulator
 
-4. **Prepare AndroidWorld and Droidrun**
+Launch the emulator **from command line** (not Android Studio UI) with the `-grpc 8554` flag, which is required for accessibility forwarding.
+
+```bash
+# Emulator path is usually located at:
+# ~/Android/Sdk/emulator/emulator
+# ~/Library/Android/sdk/emulator/emulator
+
+EMULATOR_NAME=AndroidWorldAvd
+~/Library/Android/sdk/emulator/emulator -avd $EMULATOR_NAME -no-snapshot -grpc 8554
+```
+
+---
+
+## 2. Clone and Install
+
+### 2.1 Clone repository and initialize submodules
+```bash
+git clone https://github.com/droidrun/droidrun-android-world && \
+cd droidrun-android-world
+
+# initialize submodules (android_world + droidrun)
+git submodule update --init
+```
+
+### 2.2 Create virtual environment and install dependencies
+```bash
+conda create -n droid python=3.12
+conda activate droid
+
+# Direct install (if resolution-too-deep error occurs, try uv pip)
+pip install .
+```
+
+---
+
+## 3. Configuration
+
+### 3.1 Set API Key
+```bash
+export OPENAI_API_KEY=your-key  # Or other provider keys
+```
+
+### 3.2 Start AndroidWorld Environment
+Must be executed in `droidrun-android-world/android_world` directory, and keep running:
+```bash
+cd android_world
+python -m server.android_server
+```
+
+### 3.3 Common Issues
+
+1. **sqlite3 missing FTS4/FTS5 support**  
+   Add the following to the top of `android_server.py`:
+   ```python
+   # --- enable FTS4/FTS5 even if stdlib sqlite3 was built without them ---
+   import sys
+   try:
+       import sqlite3
+       sqlite3.connect(":memory:").execute("create virtual table t using fts4(x)")
+   except Exception:
+       import pysqlite3 as _pysqlite3
+       sys.modules["sqlite3"] = _pysqlite3
+   ```
+   Then install:
    ```bash
-   # clone repo
-   git clone https://github.com/droidrun/droidrun-android-world && \
-   cd droidrun-android-world
-
-   # initialize submodules (android_world + droidrun)
-   git submodule update --init
-
-   # optionally create a virtual environment beforehand
-   pip install .
+   pip install -U pysqlite3-binary
    ```
 
-5. **Launch the Android Emulator**
+2. **adb not found**  
+   Locate adb path:
    ```bash
-   # Typically located in ~/Android/Sdk/emulator/emulator or 
-   # ~/Library/Android/sdk/emulator/emulator
-   EMULATOR_NAME=AndroidWorldAvd
-   ~/Library/Android/sdk/emulator/emulator -avd $EMULATOR_NAME -no-snapshot -grpc 8554
+   which adb
+   ```
+   Then update `adb_path` in `android_server.py`:
+   ```python
+   adb_path="/opt/android/platform-tools/adb"
    ```
 
-6. **Set Environment Variables**
-   ```bash
-   export GEMINI_API_KEY=your-key  # Or other provider keys
-   ```
+---
 
-7. **Important: Start Android World Environment**
-   ```bash
-   cd android_world && python -m server.android_server
-   ```
-   This is going to start the android world suite controller server on port 5000. If you're on mac you'll need to change this port to e.g. 5001 in the android_server.py file.
-   If you change the server port remember to specify it for every command via the ``--env-url`` option. (e.g. http://localhost:5001)
+## 4. Running Tasks
 
-8. **Ensure the Android World Environment is Ready**
-   ```bash
-   droidrun-android-world check
-   ```
+### 4.1 Verify Environment
+Run in another terminal (keep `server.android_server` running):
+```bash
+droidrun-android-world check
+```
+
+### 4.2 Run a Task
+Execute from `droidrun-android-world/android_world` directory:
+```bash
+# Example: add contact task
+droidrun-android-world run --tasks ContactsAddContact
+```
+
+### 4.3 Common Issues
+If error occurs:
+```
+ModuleNotFoundError: Could not import 'llama_index.llms.gemini'. 
+Is 'llama-index-llms-gemini' installed?
+```
+Upgrade llama-index:
+```bash
+uv pip install -U llama-index
+```
+
+---
+
+## 5. Summary
+
+- **Android Emulator** must be launched via command line and kept running  
+- **server.android_server** must be kept alive in background  
+- Run tasks only under `droidrun-android-world/android_world` directory  
+- For dependency issues, upgrade/replace `sqlite3` and `llama-index` first  
+
 
 <!--## Docker setup
 
@@ -130,13 +201,13 @@ alias droidrun-android-world='docker run --rm -it --name droidrun-android-world 
 Run a specific task by index:
 
 ```bash
-droidrun-android-world --min-task-idx 0 --max-task-idx 1
+droidrun-android-world run --min-task-idx 0 --max-task-idx 1
 ```
 
 Run a specific task by name:
 
 ```bash
-droidrun-android-world --task ContactsAddContact --task BrowserMultiply
+droidrun-android-world run --task ContactsAddContact
 ```
 
 ### List Available Tasks
@@ -144,23 +215,26 @@ droidrun-android-world --task ContactsAddContact --task BrowserMultiply
 View all available tasks with their IDs:
 
 ```bash
-droidrun-android-world --list-tasks
+droidrun-android-world list-tasks
 ```
 
 ### Customizing the Benchmark
 
 ```bash
 # Run with a different LLM provider and model
-droidrun-android-world --llm-provider Anthropic --llm-model claude-3-sonnet-20240229
+droidrun-android-world run --llm-provider Anthropic --llm-model claude-3-sonnet-20240229
 
 # Set maximum steps per task: multiplier * task complexity
-droidrun-android-world --max-step-multiplier 15
+droidrun-android-world run --max-step-multiplier 15
 
 # Run multiple parameter combinations per task
-droidrun-android-world --n-task-combinations 3
+droidrun-android-world run --n-task-combinations 3
+
+# Check all available configuration options with
+droidrun-android-world run --help
 ```
 
-## Results
+<!--## Results
 
 Benchmark results are saved in the specified results directory (default: `eval_results/`). For each task run, the following files are generated:
 
@@ -171,7 +245,7 @@ After completion, a summary is printed to the console showing:
 - Total tasks run
 - Success rate
 - Average steps per task
-- Average execution time
+- Average execution time-->
 
 ## Accessibility Service Notes
 
@@ -181,20 +255,3 @@ If you encounter issues with UI interaction:
    - Make sure both Droidrun Portal and Google Accessibility Forwarder are configured and enabled as accessiblity service
 
 To diagnose run ``droidrun-android-world check``
-
-## Task Categories
-
-AndroidWorld tasks span various applications and interaction types:
-
-- **Contacts**: Add, edit, delete contacts
-- **Clock**: Set alarms, use timer, stopwatch
-- **Calculator**: Basic and scientific calculations
-- **Messages**: Send SMS, share content
-- **Settings**: Wi-Fi configuration, display settings
-- **Calendar**: Create, edit events
-- **Camera**: Take photos, record videos
-- **Web Browsing**: Search, navigate websites
-- **And more...**
-
-Each task is designed to test agent capabilities across different UI interaction patterns and complexity levels. 
-

@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from adbutils import adb, AdbDevice
 import threading
 
-logger = logging.getLogger("droidrun-portal")
+logger = logging.getLogger(__name__)
 
 
 def disable_overlay_once(device: AdbDevice):

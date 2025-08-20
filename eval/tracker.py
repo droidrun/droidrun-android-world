@@ -156,9 +156,9 @@ def write_task_result(
     except Exception as e:
         logger.error(f"Error writing task result to {fpath}: {e}")
 
-    write_task_trajectory(
-        task_result.task_name, task_result.task_idx, task_result.trajectory
-    )
+    # write_task_trajectory(
+    #     task_result.task_name, task_result.task_idx, task_result.trajectory
+    # )
 
     send_discord_task_result(task_result)
 
