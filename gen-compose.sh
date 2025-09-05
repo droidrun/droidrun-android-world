@@ -12,13 +12,13 @@ for i in {1..10}; do
 
 echo """
   android-world-env-$i:
-    image: europe-west3-docker.pkg.dev/bonny-android-use-staging/droidrun/android-world:latest
+    image: timoatdroidrun/android-world:latest
     container_name: android-world-env-$i
     privileged: true
     networks:
       - benchmark
   droidrun-benchmark-$i:
-    image: europe-west3-docker.pkg.dev/bonny-android-use-staging/droidrun/droidrun-android-world:latest
+    image: timoatdroidrun/droidrun-android-world:latest
     container_name: droidrun-benchmark-$i
     networks:
       - benchmark
@@ -34,7 +34,7 @@ done
 # print ws-scrcpy service into docker-compose.yaml
 echo """
   ws-scrcpy:
-    image: europe-west3-docker.pkg.dev/bonny-android-use-staging/droidrun/ws-scrcpy:latest
+    image: timoatdroidrun/ws-scrcpy:latest
     container_name: ws-scrcpy
     networks:
       - benchmark
