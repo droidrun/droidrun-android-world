@@ -4,8 +4,7 @@ This module provides tools for benchmarking DroidRun using the [AndroidWorld](ht
 
 ---
 
-
-## 1. Environment Setup
+## 1. Manual Environment Setup
 
 Reference: [android_world official documentation](https://github.com/google-research/android_world/tree/main#installation).
 
