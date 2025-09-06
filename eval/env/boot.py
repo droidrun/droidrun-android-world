@@ -30,16 +30,16 @@ def install_portal(serial: str):
         with download_portal_apk() as apk_path:
             device.install(apk_path, uninstall=True, flags=["-g"], silent=False)
             logger.info("Portal APK installed successfully")
-    except Exception:
-        raise RuntimeError("Failed to download and install portal APK")
+    except Exception as e:
+        raise RuntimeError(f"Failed to download and install portal APK: {e}")
 
     try:
         enable_portal_accessibility(
             device, service_name=DROIDRUN_X_GOOGLE_A11Y_SERVICE_NAME
         )
         logger.info("Portal accessibility enabled successfully")
-    except Exception:
-        raise RuntimeError("Failed to enable portal accessibility")
+    except Exception as e:
+        raise RuntimeError(f"Failed to enable portal accessibility: {e}")
 
 
 def check_portal(serial: str):
@@ -53,8 +53,8 @@ def check_portal(serial: str):
     try:
         set_overlay_offset(device, DEFAULT_OVERLAY_OFFSET)
         logger.info("Overlay offset set successfully")
-    except Exception:
-        raise RuntimeError("Failed to set overlay offset")
+    except Exception as e:
+        raise RuntimeError(f"Failed to set overlay offset: {e}")
 
     try:
         ping_portal(device)
