@@ -1,14 +1,17 @@
-FROM python:3.12-slim
+FROM python:3.11-slim-trixie
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /opt/shared
 
 RUN apt-get update && \
-    apt-get install -y curl adb
+    apt-get install -y --no-install-recommends adb && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# install droidrun-android-world cli
+# copy project into container
 COPY . .
-RUN --mount=type=cache,target=/root/.cache/pip pip install .
+RUN uv sync --locked
 
 VOLUME ["/opt/shared/eval_results"]
 
-ENTRYPOINT ["droidrun-android-world"]
+ENTRYPOINT ["uv", "run", "droidworld"]

@@ -8,3 +8,7 @@ eval_results
 .venv
 build
 debug_screenshots
+Dockerfile
+.gitignore
+Dockerfile.ws-scrcpy
+gen-compose.sh
