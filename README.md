@@ -43,13 +43,12 @@ cd droidrun-android-world
 git submodule update --init
 ```
 
-### 2.2 Create virtual environment and install dependencies
+### 2.2 Install dependencies
 ```bash
-conda create -n droid python=3.12
-conda activate droid
-
-# Direct install (if resolution-too-deep error occurs, try uv pip)
-pip install .
+# install dependencies using uv
+uv sync
+# build cli
+uv build
 ```
 
 ---
@@ -58,7 +57,7 @@ pip install .
 
 ### 3.1 Set API Key
 ```bash
-export OPENAI_API_KEY=your-key  # Or other provider keys
+export GEMINI_API_KEY=your-key  # Or other provider keys
 ```
 
 ### 3.2 Start AndroidWorld Environment
@@ -70,24 +69,7 @@ python -m server.android_server
 
 ### 3.3 Common Issues
 
-1. **sqlite3 missing FTS4/FTS5 support**  
-   Add the following to the top of `android_server.py`:
-   ```python
-   # --- enable FTS4/FTS5 even if stdlib sqlite3 was built without them ---
-   import sys
-   try:
-       import sqlite3
-       sqlite3.connect(":memory:").execute("create virtual table t using fts4(x)")
-   except Exception:
-       import pysqlite3 as _pysqlite3
-       sys.modules["sqlite3"] = _pysqlite3
-   ```
-   Then install:
-   ```bash
-   pip install -U pysqlite3-binary
-   ```
-
-2. **adb not found**  
+1. **adb not found**  
    Locate adb path:
    ```bash
    which adb
@@ -104,25 +86,14 @@ python -m server.android_server
 ### 4.1 Verify Environment
 Run in another terminal (keep `server.android_server` running):
 ```bash
-droidrun-android-world check
+droidworld check
 ```
 
 ### 4.2 Run a Task
-Execute from `droidrun-android-world/android_world` directory:
+Execute from `droidrun-android-world` directory:
 ```bash
 # Example: add contact task
-droidrun-android-world run --tasks ContactsAddContact
-```
-
-### 4.3 Common Issues
-If error occurs:
-```
-ModuleNotFoundError: Could not import 'llama_index.llms.gemini'. 
-Is 'llama-index-llms-gemini' installed?
-```
-Upgrade llama-index:
-```bash
-uv pip install -U llama-index
+droidworld run --tasks ContactsAddContact
 ```
 
 ---
@@ -131,8 +102,7 @@ uv pip install -U llama-index
 
 - **Android Emulator** must be launched via command line and kept running  
 - **server.android_server** must be kept alive in background  
-- Run tasks only under `droidrun-android-world/android_world` directory  
-- For dependency issues, upgrade/replace `sqlite3` and `llama-index` first  
+- Run tasks only under `droidrun-android-world` directory  
 
 
 <!--## Docker setup
@@ -200,13 +170,13 @@ alias droidrun-android-world='docker run --rm -it --name droidrun-android-world 
 Run a specific task by index:
 
 ```bash
-droidrun-android-world run --min-task-idx 0 --max-task-idx 1
+droidworld run --min-task-idx 0 --max-task-idx 1
 ```
 
 Run a specific task by name:
 
 ```bash
-droidrun-android-world run --task ContactsAddContact
+droidworld run --task ContactsAddContact
 ```
 
 ### List Available Tasks
@@ -214,23 +184,23 @@ droidrun-android-world run --task ContactsAddContact
 View all available tasks with their IDs:
 
 ```bash
-droidrun-android-world list-tasks
+droidworld list-tasks
 ```
 
 ### Customizing the Benchmark
 
 ```bash
 # Run with a different LLM provider and model
-droidrun-android-world run --llm-provider Anthropic --llm-model claude-3-sonnet-20240229
+droidworld run --llm-provider Anthropic --llm-model claude-3-sonnet-20240229
 
 # Set maximum steps per task: multiplier * task complexity
-droidrun-android-world run --max-step-multiplier 15
+droidworld run --max-step-multiplier 15
 
 # Run multiple parameter combinations per task
-droidrun-android-world run --n-task-combinations 3
+droidworld run --n-task-combinations 3
 
 # Check all available configuration options with
-droidrun-android-world run --help
+droidworld run --help
 ```
 
 <!--## Results
@@ -253,4 +223,4 @@ If you encounter issues with UI interaction:
    - Verify the DroidRun Portal app is installed correctly 
    - Make sure both Droidrun Portal and Google Accessibility Forwarder are configured and enabled as accessiblity service
 
-To diagnose run ``droidrun-android-world check``
+To diagnose run ``droidworld check``

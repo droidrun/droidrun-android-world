@@ -9,3 +9,4 @@ task_progress.json
 debug_screenshots
 .DS_Store
 docker-compose.yaml
+docker-compose.yml
