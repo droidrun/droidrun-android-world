@@ -15,6 +15,8 @@ RUN apt-get update && \
 COPY . .
 RUN uv sync --locked
 
+RUN uv build
+
 VOLUME ["/opt/shared/eval_results"]
 
-ENTRYPOINT ["uv", "run", "droidworld"]
+ENTRYPOINT ["/opt/shared/.venv/bin/droidworld"]
