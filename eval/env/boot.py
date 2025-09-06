@@ -10,7 +10,7 @@ from droidrun.portal import (
     set_overlay_offset,
     A11Y_SERVICE_NAME as DROIDRUN_A11Y_SERVICE_NAME,
 )
-from adbutils import adb
+from adbutils import adb, AdbDevice
 import time
 
 logger = logging.getLogger(__name__)
@@ -21,10 +21,19 @@ DROIDRUN_X_GOOGLE_A11Y_SERVICE_NAME = (
 )
 DEFAULT_OVERLAY_OFFSET = -126
 
+def ensure_connected(serial: str) -> AdbDevice:
+    try:
+        res = adb.connect(serial)
+        if res.count("failed") > 0 or res.count("unable") > 0:
+            raise res
+    except Exception as e:
+        raise RuntimeError(f"Device {serial} is not connected: {e}")
+    
+    return adb.device(serial)
 
-def install_portal(serial: str):
+
+def install_portal(device: AdbDevice):
     logger.info(f"Installing portal...")
-    device = adb.device(serial)
 
     try:
         with download_portal_apk() as apk_path:
@@ -42,9 +51,7 @@ def install_portal(serial: str):
         raise RuntimeError(f"Failed to enable portal accessibility: {e}")
 
 
-def check_portal(serial: str):
-    device = adb.device(serial)
-
+def check_portal(device: AdbDevice):
     if not check_portal_accessibility(
         device, service_name=DROIDRUN_X_GOOGLE_A11Y_SERVICE_NAME
     ):
@@ -110,10 +117,16 @@ def boot_environment(env: AndroidEnvClient, serial: str):
         logger.error(f"Environment {env.base_url} failed to boot: {e}")
         raise e
 
+    try:
+        device = ensure_connected(serial)
+    except Exception as e:
+        logger.error(f"Environment {env.base_url} failed to connect via adb: {e}")
+        raise e
+
     # check if portal is already installed
     try:
         logger.info(f"Checking portal for environment {env.base_url}...")
-        check_portal(serial)
+        check_portal(device)
         logger.info(f"Portal is installed and accessible. You're good to go!")
         return
     except Exception as e:
@@ -123,7 +136,7 @@ def boot_environment(env: AndroidEnvClient, serial: str):
 
     try:
         logger.info(f"Installing portal for environment {env.base_url}...")
-        install_portal(serial)
+        install_portal(device)
         logger.info(f"Portal installed successfully for environment {env.base_url}!")
     except Exception as e:
         logger.error(f"Environment {env.base_url} failed to install portal: {e}")
@@ -131,7 +144,7 @@ def boot_environment(env: AndroidEnvClient, serial: str):
 
     try:
         logger.info(f"Checking portal for environment {env.base_url}...")
-        check_portal(serial)
+        check_portal(device)
         logger.info(f"Portal is installed and accessible. You're good to go!")
     except Exception as e:
         logger.error(f"Environment {env.base_url} failed to check portal: {e}")
