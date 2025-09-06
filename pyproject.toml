@@ -1,0 +1,30 @@
+[project]
+name = "droidrun-android-world"
+version = "0.1.0"
+description = "Droidrun Android World Benchmark Runner"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Timo Beckmann", email = "timo@droidrun.ai"}
+]
+dependencies = [
+    "droidrun",
+    "android-world"
+]
+
+[project.scripts]
+droidworld = "eval.cli:cli"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["eval*"]
+
+[tool.uv.workspace]
+members = ["droidrun","android_world"]
+
+[tool.uv.sources]
+droidrun = { workspace = true }
+android_world = { workspace = true }
