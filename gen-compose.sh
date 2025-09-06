@@ -74,6 +74,12 @@ echo """
     privileged: true
     networks:
       - benchmark
+    healthcheck:
+      test: ["CMD", "adb", "shell", "getprop", "sys.boot_completed"]
+      interval: 30s
+      timeout: 10s
+      start_period: 180s
+      retries: 3
   droidrun-benchmark-$i:
     image: timoatdroidrun/droidrun-android-world:latest
     container_name: droidrun-benchmark-$i
@@ -83,9 +89,10 @@ echo """
       - ./eval_results:/opt/shared/eval_results
     env_file:
       - .env
-    command: --base-url http://android-world-env-$i:5000 --device android-world-env-$i:5555 --llm-provider Gemini --llm-model models/gemini-2.5-pro --debug --reasoning --min-task-idx 80 --max-task-idx 117 --timeout-multiplier 1000
+    command: run --env-url http://android-world-env-$i:5000 --env-serial android-world-env-$i:5555 --llm-provider Gemini --llm-model models/gemini-2.5-pro --debug --reasoning --min-task-idx 80 --max-task-idx 117 --timeout-multiplier 1000
     depends_on:
-      - android-world-env-$i"""
+      android-world-env-$i:
+        condition: service_healthy"""
 done
 
 # print ws-scrcpy service into docker-compose.yaml
@@ -99,4 +106,8 @@ echo """
       - ADB_DEVICES=$(IFS=,; echo "${android_env_list[*]}")
     ports:
       - 8000:8080
-"""
+    depends_on:"""
+for i in $(seq 1 $n); do
+	echo """      android-world-env-$i:
+        condition: service_healthy"""
+done
