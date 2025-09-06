@@ -111,7 +111,7 @@ def wait_ready(env: AndroidEnvClient, timeout: int = 300):
 def boot_environment(env: AndroidEnvClient, serial: str):
     try:
         logger.info(f"Waiting for environment {env.base_url} to be ready...")
-        wait_ready(env)
+        wait_ready(env, timeout=600)
         logger.info(f"Environment {env.base_url} is ready!")
     except Exception as e:
         logger.error(f"Environment {env.base_url} failed to boot: {e}")
