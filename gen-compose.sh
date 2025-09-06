@@ -60,6 +60,14 @@ done
 echo """networks:
   benchmark:
 
+volumes:
+  eval_results:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./eval_results
+
 services:"""
 
 # print emulators
@@ -86,7 +94,7 @@ echo """
     networks:
       - benchmark
     volumes:
-      - ./eval_results:/opt/shared/eval_results
+      - eval_results:/opt/shared/eval_results
     env_file:
       - .env
     command: run --env-url http://android-world-env-$i:5000 --env-serial android-world-env-$i:5555 --llm-provider Gemini --llm-model models/gemini-2.5-pro --debug --reasoning --min-task-idx 80 --max-task-idx 117 --timeout-multiplier 1000
@@ -105,7 +113,7 @@ echo """
     environment:
       - ADB_DEVICES=$(IFS=,; echo "${android_env_list[*]}")
     ports:
-      - 8000:8080
+      - 6544:8000
     depends_on:"""
 for i in $(seq 1 $n); do
 	echo """      android-world-env-$i:
