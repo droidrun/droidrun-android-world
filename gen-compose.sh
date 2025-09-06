@@ -1,21 +1,27 @@
 #!/bin/bash
 
+SUITE_FAMILY="android_world"
+SIUTE_MAX_TASK_IDX=117
+
 # Function to display help message
 show_help() {
     cat << EOF
-Usage: $0 [OPTIONS]
+Usage: $0 [OPTIONS] [-- ADDITIONAL_DROIDRUN_OPTIONS]
 
 Generate a docker-compose.yaml file for Android World benchmark environment.
 
 OPTIONS:
-    -n, --n <number>    Number of emulator instances to generate (default: 1)
+    -n, --n <number>    Number of runner instances to generate (default: 1)
                         Must be a positive integer
     -h, --help          Show this help message and exit
+    --                  All options after -- will be passed to the droidrun command
 
 EXAMPLES:
-    $0                  # Generate with 1 emulator instance (default)
-    $0 -n 5             # Generate with 5 emulator instances
-    $0 --n 10           # Generate with 10 emulator instances
+    $0                                    # Generate with 1 runner instance (default)
+    $0 -n 5                               # Generate with 5 runner instances
+    $0 --n 10                             # Generate with 10 runner instances
+    $0 -n 3 -- --reasoning --debug       # Generate 3 instances with additional droidrun options
+    $0 -- --llm-provider OpenAI --llm-model gpt-4o  # Pass additional LLM options
 
 DESCRIPTION:
     This script generates a docker-compose.yaml configuration that includes:
@@ -24,7 +30,7 @@ DESCRIPTION:
     - ws-scrcpy service for screen mirroring
     - Proper networking configuration
 
-    Each emulator instance creates two containers:
+    Each runner instance creates two containers:
     - android-world-env-<N>: The Android emulator environment
     - droidrun-benchmark-<N>: The benchmark execution container
 
@@ -33,6 +39,8 @@ EOF
 
 # Parse command line arguments
 n=1  # default value
+additional_droidrun_options="--llm-provider Gemini --llm-model models/gemini-2.5-pro --reasoning --reflection --timeout-multiplier 1000"
+
 while [[ $# -gt 0 ]]; do
   case $1 in
     -n|--n)
@@ -47,6 +55,12 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       show_help
       exit 0
+      ;;
+    --)
+      shift
+      # All remaining arguments are additional droidrun options
+      additional_droidrun_options="$*"
+      break
       ;;
     *)
       echo "Error: Unknown option '$1'" >&2
@@ -74,6 +88,8 @@ services:"""
 android_env_list=() 
 for i in $(seq 1 $n); do
 	android_env_list+=("android-world-env-$i:5555")
+  env_min_task_idx=$(( (i - 1) * SIUTE_MAX_TASK_IDX / n ))
+  env_max_task_idx=$(( i * SIUTE_MAX_TASK_IDX / n ))
 
 echo """
   android-world-env-$i:
@@ -97,7 +113,7 @@ echo """
       - eval_results:/opt/shared/eval_results
     env_file:
       - .env
-    command: run --env-url http://android-world-env-$i:5000 --env-serial android-world-env-$i:5555 --llm-provider Gemini --llm-model models/gemini-2.5-pro --debug --reasoning --min-task-idx 80 --max-task-idx 117 --timeout-multiplier 1000
+    command: run --env-url http://android-world-env-$i:5000 --env-serial android-world-env-$i:5555 --min-task-idx $env_min_task_idx --max-task-idx $env_max_task_idx $additional_droidrun_options
     depends_on:
       android-world-env-$i:
         condition: service_healthy"""
