@@ -61,7 +61,7 @@ def parse_element(data: dict[str, Any]) -> representation_utils.UIElement:
 class AndroidEnvClient:
     """Client for interacting with the Android environment server."""
 
-    def __init__(self, base_url: str = "http://localhost:5000"):
+    def __init__(self, base_url: str = "http://localhost:5001"):
         logger.info(
             "Setting up Android environment using Docker - Initial setup may take"
             " 5-10 minutes. Please wait..."

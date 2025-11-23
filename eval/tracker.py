@@ -111,9 +111,17 @@ def get_task_result(
     task_result.success = score
 
     if agent_result is not None:
-        task_result.agent_success = agent_result["success"]
-        task_result.steps_taken = agent_result["steps"]
-        task_result.final_thought = agent_result["reason"]
+        # Handle both old dict format and new ResultEvent format
+        if hasattr(agent_result, 'success'):
+            # New API: ResultEvent object
+            task_result.agent_success = agent_result.success
+            task_result.steps_taken = agent_result.steps
+            task_result.final_thought = agent_result.reason
+        else:
+            # Old API: dict
+            task_result.agent_success = agent_result["success"]
+            task_result.steps_taken = agent_result["steps"]
+            task_result.final_thought = agent_result["reason"]
 
     if error is not None:
         task_result.error = error
@@ -126,7 +134,14 @@ def get_task_result(
     task_result.trajectory_stats = TrajectoryStats(
         **get_trajectory_statistics(task_result.trajectory)
     )
-    task_result.reasoning = agent.reasoning
+    # Handle both old and new API for reasoning attribute
+    if hasattr(agent, 'reasoning'):
+        task_result.reasoning = agent.reasoning
+    elif hasattr(agent, 'config') and hasattr(agent.config, 'agent'):
+        task_result.reasoning = agent.config.agent.reasoning
+    else:
+        task_result.reasoning = False
+        
     if device is not None:
         task_result.device = device
 

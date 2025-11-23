@@ -11,7 +11,7 @@ from droidrun.portal import (
     setup_keyboard,
     A11Y_SERVICE_NAME as DROIDRUN_A11Y_SERVICE_NAME,
 )
-from adbutils import adb, AdbDevice
+from async_adbutils import adb, AdbDevice
 import time
 
 logger = logging.getLogger(__name__)
@@ -22,30 +22,37 @@ DROIDRUN_X_GOOGLE_A11Y_SERVICE_NAME = (
 )
 DEFAULT_OVERLAY_OFFSET = -126
 
-def ensure_connected(serial: str) -> AdbDevice:
+async def ensure_connected(serial: str) -> AdbDevice:
     try:
-        res = adb.connect(serial)
-        if res.count("failed") > 0 or res.count("unable") > 0:
-            raise res
+        # For emulator devices (emulator-*), they're already connected locally
+        # Only try network connect for IP addresses
+        if ":" in serial or not serial.startswith("emulator-"):
+            res = adb.connect(serial)
+            if res.count("failed") > 0 or res.count("unable") > 0:
+                raise RuntimeError(f"Failed to connect: {res}")
+        
+        # Verify device is available
+        device = await adb.device(serial)
+        # Test if device is accessible
+        await device.shell("echo test")
+        return device
     except Exception as e:
         raise RuntimeError(f"Device {serial} is not connected: {e}")
-    
-    return adb.device(serial)
 
 
-def install_portal(device: AdbDevice):
+async def install_portal(device: AdbDevice):
     logger.info("Installing portal...")
 
     try:
         with download_portal_apk() as apk_path:
-            device.install(apk_path, uninstall=True, flags=["-g"], silent=False)
+            await device.install(apk_path, uninstall=True, flags=["-g"], silent=False)
             logger.info("Portal APK installed successfully")
     except Exception as e:
         raise RuntimeError(f"Failed to download and install portal APK: {e}")
 
     try:
         logger.info("Enabling portal as accessibility service...")
-        enable_portal_accessibility(
+        await enable_portal_accessibility(
             device, service_name=DROIDRUN_X_GOOGLE_A11Y_SERVICE_NAME
         )
         logger.info("Portal accessibility enabled successfully")
@@ -54,36 +61,36 @@ def install_portal(device: AdbDevice):
 
     try:
         logger.info("Setting up keyboard for environment...")
-        setup_keyboard(device)
+        await setup_keyboard(device)
         logger.info("Keyboard setup completed successfully!")
     except Exception as e:
         raise RuntimeError(f"Failed to setup keyboard: {e}")
 
 
-def check_portal(device: AdbDevice):
-    if not check_portal_accessibility(
+async def check_portal(device: AdbDevice):
+    if not await check_portal_accessibility(
         device, service_name=DROIDRUN_X_GOOGLE_A11Y_SERVICE_NAME
     ):
         raise RuntimeError("Accessibility settings invalid")
     
     try:
-        set_overlay_offset(device, DEFAULT_OVERLAY_OFFSET)
+        await set_overlay_offset(device, DEFAULT_OVERLAY_OFFSET)
         logger.info("Overlay offset set successfully")
     except Exception as e:
         raise RuntimeError(f"Failed to set overlay offset: {e}")
 
     try:
-        ping_portal(device)
+        await ping_portal(device)
     except Exception as e:
         raise RuntimeError(f"Failed to ping portal: {e}")
 
     try:
-        ping_portal_content(device)
+        await ping_portal_content(device)
     except Exception as e:
         raise RuntimeError(f"Failed to ping portal content: {e}")
 
     try:
-        ping_portal_tcp(device)
+        await ping_portal_tcp(device)
     except Exception as e:
         raise RuntimeError(f"Failed to ping portal TCP: {e}")
 
@@ -117,7 +124,7 @@ def wait_ready(env: AndroidEnvClient, timeout: int = 300):
     )
 
 
-def boot_environment(env: AndroidEnvClient, serial: str):
+async def boot_environment(env: AndroidEnvClient, serial: str):
     try:
         logger.info(f"Waiting for environment {env.base_url} to be ready...")
         wait_ready(env, timeout=600)
@@ -127,7 +134,7 @@ def boot_environment(env: AndroidEnvClient, serial: str):
         raise e
 
     try:
-        device = ensure_connected(serial)
+        device = await ensure_connected(serial)
     except Exception as e:
         logger.error(f"Environment {env.base_url} failed to connect via adb: {e}")
         raise e
@@ -135,7 +142,7 @@ def boot_environment(env: AndroidEnvClient, serial: str):
     # check if portal is already installed
     try:
         logger.info(f"Checking portal for environment {env.base_url}...")
-        check_portal(device)
+        await check_portal(device)
         logger.info("Portal is installed and accessible. You're good to go!")
         return
     except Exception as e:
@@ -145,7 +152,7 @@ def boot_environment(env: AndroidEnvClient, serial: str):
 
     try:
         logger.info(f"Installing portal for environment {env.base_url}...")
-        install_portal(device)
+        await install_portal(device)
         logger.info(f"Portal installed successfully for environment {env.base_url}!")
     except Exception as e:
         logger.error(f"Environment {env.base_url} failed to install portal: {e}")
@@ -153,7 +160,7 @@ def boot_environment(env: AndroidEnvClient, serial: str):
 
     try:
         logger.info(f"Checking portal for environment {env.base_url}...")
-        check_portal(device)
+        await check_portal(device)
         logger.info("Portal is installed and accessible. You're good to go!")
     except Exception as e:
         logger.error(f"Environment {env.base_url} failed to check portal: {e}")

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 from typing import Tuple
@@ -32,6 +33,7 @@ async def run_task_on_env(
     reflection: bool,
     tracing: bool,
     debug: bool,
+    droidrun_config=None,
 ) -> Tuple[TaskResult, Exception | None]:
     env.reset(go_home=True)
     task_goal = env.get_task_goal(task_name, task_idx)
@@ -57,19 +59,60 @@ async def run_task_on_env(
     )
 
     tools = AndroidWorldTools(device_serial, env)
-    agent = DroidAgent(
-        goal=task_goal,
-        llm=llm,
-        tools=tools,
-        reasoning=reasoning,
-        enable_tracing=tracing,
-        debug=debug,
-        max_steps=max_steps,
-        timeout=timeout,
-        save_trajectories="none",
-        reflection=reflection,
-        vision=vision,
+    
+    # Import new config classes for DroidAgent
+    from droidrun.config_manager.config_manager import (
+        DroidrunConfig,
+        AgentConfig,
+        DeviceConfig,
+        LoggingConfig,
+        TracingConfig,
+        ManagerConfig,
+        ExecutorConfig,
+        CodeActConfig,
     )
+    
+    # Use provided config or build from CLI parameters
+    if droidrun_config is not None:
+        # Use the provided DroidrunConfig from config.yaml
+        logger.info("Using DroidRun config from config.yaml")
+        config = droidrun_config
+        
+        # Override max_steps in the config
+        config.agent.max_steps = max_steps
+        
+        agent = DroidAgent(
+            goal=task_goal,
+            config=config,
+            # Don't pass llms - let DroidAgent load from config.llm_profiles
+            tools=tools,
+            timeout=timeout,
+        )
+    else:
+        # Build config from CLI parameters (backward compatibility)
+        logger.info("Building DroidRun config from CLI parameters")
+        agent_config = AgentConfig(
+            reasoning=reasoning,
+            max_steps=max_steps,
+            manager=ManagerConfig(vision=vision),
+            executor=ExecutorConfig(vision=vision),
+            codeact=CodeActConfig(vision=vision),
+        )
+        
+        config = DroidrunConfig(
+            agent=agent_config,
+            device=DeviceConfig(),
+            logging=LoggingConfig(debug=debug, save_trajectory="none"),
+            tracing=TracingConfig(enabled=tracing),
+        )
+        
+        agent = DroidAgent(
+            goal=task_goal,
+            config=config,
+            llms=llm,  # Pass single LLM for all agents
+            tools=tools,
+            timeout=timeout,
+        )
 
     logger.debug("DroidAgent initialized successfully")
 
@@ -80,6 +123,12 @@ async def run_task_on_env(
         logger.info("Running DroidAgent...")
         agent_result = await agent.run()
         logger.debug("DroidAgent completed successfully")
+
+        # Wait for UI to stabilize after agent completion
+        # This ensures that any overlay messages or UI transitions have completed
+        # before AndroidWorld evaluates the task state
+        logger.debug("Waiting for UI to stabilize before scoring...")
+        await asyncio.sleep(2.0)  # 2 second delay to allow UI to stabilize
 
         score = env.get_task_score(task_name, task_idx)
         logger.info(f"Task {task_name} {task_idx} score: {score}")
@@ -93,17 +142,31 @@ async def run_task_on_env(
         )
     except WorkflowTimeoutError as e:
         logger.warn(f"Droidrun timed out for task {task_name} {task_idx}: {e}")
+        # Wait for UI to stabilize even after timeout
+        logger.debug("Waiting for UI to stabilize before scoring (timeout case)...")
+        await asyncio.sleep(2.0)  # 2 second delay to allow UI to stabilize
+        
         score = env.get_task_score(task_name, task_idx)
         logger.info(f"Task {task_name} {task_idx} score: {score}")
+        
+        # Create a simple result object for timeout
+        class TimeoutResult:
+            def __init__(self):
+                self.success = False
+                self.reason = f"Timeout after {timeout} seconds"
+                # Handle both old and new API for step counter
+                if hasattr(agent, 'step_counter'):
+                    self.steps = agent.step_counter
+                elif hasattr(agent, 'shared_state') and hasattr(agent.shared_state, 'step_number'):
+                    self.steps = agent.shared_state.step_number
+                else:
+                    self.steps = 0
+        
         result = get_task_result(
             task_result,
             agent,
             score=score,
-            agent_result={
-                "steps": agent.step_counter,
-                "success": False,
-                "reason": f"Timeout after {timeout} seconds",
-            },
+            agent_result=TimeoutResult(),
             device=device_serial,
         )
     except Exception as e:

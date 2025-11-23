@@ -93,7 +93,7 @@ droidworld check
 Execute from `droidrun-android-world` directory:
 ```bash
 # Example: add contact task
-droidworld run --tasks ContactsAddContact
+droidworld run --task ContactsAddContact
 ```
 
 ---
@@ -179,6 +179,12 @@ Run a specific task by name:
 droidworld run --task ContactsAddContact
 ```
 
+Run multiple specific tasks:
+
+```bash
+droidworld run --task ContactsAddContact --task ContactsDeleteContact
+```
+
 ### List Available Tasks
 
 View all available tasks with their IDs:
@@ -189,17 +195,66 @@ droidworld list-tasks
 
 ### Customizing the Benchmark
 
+#### LLM Provider Configuration
+
 ```bash
-# Run with a different LLM provider and model
-droidworld run --llm-provider Anthropic --llm-model claude-3-sonnet-20240229
+# Use Anthropic Claude
+droidworld run --task ContactsAddContact \
+  --llm-provider Anthropic \
+  --llm-model claude-3-sonnet-20240229
 
+# Use OpenAI-compatible API (e.g., third-party proxy)
+droidworld run --task ContactsAddContact \
+  --llm-provider OpenAILike \
+  --llm-model gemini-2.5-pro \
+  --api-base http://your-api-endpoint/v1
+
+# Enable vision and reasoning modes
+droidworld run --task ContactsAddContact \
+  --vision \
+  --reasoning
+```
+
+#### Task Family Selection
+
+Choose from different task families:
+- `android_world` (default): Full Android World task suite
+- `android`: Android-specific tasks
+- `miniwob`: MiniWoB tasks
+- `information_retrieval`: Information retrieval tasks
+
+```bash
+droidworld run --task-family android --min-task-idx 0 --max-task-idx 5
+```
+
+#### Performance Tuning
+
+```bash
 # Set maximum steps per task: multiplier * task complexity
-droidworld run --max-step-multiplier 15
+droidworld run --task ContactsAddContact --max-steps-multiplier 15
 
+# Set timeout: multiplier (in seconds) per task
+droidworld run --task ContactsAddContact --timeout-multiplier 300
+
+# Adjust LLM temperature
+droidworld run --task ContactsAddContact --temperature 0.7
+```
+
+#### Advanced Options
+
+```bash
 # Run multiple parameter combinations per task
-droidworld run --n-task-combinations 3
+droidworld run --task ContactsAddContact --n-task-combinations 3
 
-# Check all available configuration options with
+# Enable debug mode and tracing
+droidworld run --task ContactsAddContact --debug --tracing
+
+# Use custom environment URL and device serial
+droidworld run --task ContactsAddContact \
+  --env-url http://localhost:5001 \
+  --env-serial emulator-5554
+
+# Check all available configuration options
 droidworld run --help
 ```
 

@@ -6,7 +6,7 @@ DroidRun accessibility service, which is necessary for some tasks.
 """
 
 import logging
-from adbutils import adb
+from async_adbutils import adb
 from droidrun.portal import toggle_overlay
 import threading
 

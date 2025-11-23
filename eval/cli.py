@@ -8,7 +8,7 @@ from eval.env.client import AndroidEnvClient
 from eval.env.boot import boot_environment
 from eval.runner import run_task_on_env
 from eval.tracker import write_task_result
-from eval.portal.keepalive import disable_overlay_once
+from droidrun.portal import toggle_overlay
 from droidrun import load_llm, __version__ as droidrun_version
 from android_world import __version__ as android_world_version
 from adbutils import adb
@@ -67,7 +67,7 @@ def version():
 @cli.command()
 @click.option(
     "--env-url",
-    default="http://localhost:5000",
+    default="http://localhost:5001",
     help="Android World Environment URL to use.",
 )
 def list_tasks(env_url):
@@ -81,14 +81,15 @@ def list_tasks(env_url):
 @cli.command()
 @click.option(
     "--env-url",
-    default="http://localhost:5000",
+    default="http://localhost:5001",
     help="Android World Environment URL to use.",
 )
 @click.option("--env-serial", default="emulator-5554", help="Device serial to use.")
 def check(env_url, env_serial):
+    import asyncio
     env = AndroidEnvClient(env_url)
     try:
-        boot_environment(env, env_serial)
+        asyncio.run(boot_environment(env, env_serial))
         logger.info("Environment is healthy")
     except Exception as e:
         logger.error(f"Error booting environment: {e}")
@@ -100,7 +101,7 @@ def check(env_url, env_serial):
 def disable_overlay(env_serial):
     try:
         device = adb.device(env_serial)
-        disable_overlay_once(device)
+        toggle_overlay(device, False)
         logger.info("Overlay disabled")
     except Exception as e:
         logger.error(f"Error disabling overlay: {e}")
@@ -110,7 +111,7 @@ def disable_overlay(env_serial):
 @cli.command()
 @click.option(
     "--env-url",
-    default="http://localhost:5000",
+    default="http://localhost:5001",
     help="Android World Environment URL to use.",
 )
 @click.option("--env-serial", default="emulator-5554", help="Device serial to use.")
@@ -122,14 +123,16 @@ def disable_overlay(env_serial):
 @click.option(
     "--n-task-combinations", "-n", default=1, help="Number of task combinations."
 )
-@click.option("--llm-provider", default="Gemini", help="LLM provider to use.")
-@click.option("--llm-model", default="gemini-2.5-pro", help="LLM model to use.")
-@click.option("--vision", is_flag=True, help="Enable vision.")
-@click.option("--reasoning", is_flag=True, help="Enable reasoning.")
-@click.option("--reflection", is_flag=True, help="Enable reflection.")
-@click.option("--debug", is_flag=True, help="Enable debug mode.")
-@click.option("--temperature", default=0.5, help="Temperature to use.")
-@click.option("--tracing", is_flag=True, help="Enable tracing.")
+@click.option("--config", "-c", default=None, help="Path to DroidRun config.yaml file. If provided, CLI LLM parameters will be ignored.")
+@click.option("--llm-provider", default="Gemini", help="LLM provider to use (ignored if --config is provided).")
+@click.option("--llm-model", default="gemini-2.5-pro", help="LLM model to use (ignored if --config is provided).")
+@click.option("--api-base", default=None, help="Base URL for API (ignored if --config is provided).")
+@click.option("--vision", is_flag=True, help="Enable vision (ignored if --config is provided).")
+@click.option("--reasoning", is_flag=True, help="Enable reasoning (ignored if --config is provided).")
+@click.option("--reflection", is_flag=True, help="Enable reflection (ignored if --config is provided).")
+@click.option("--debug", is_flag=True, help="Enable debug mode (ignored if --config is provided).")
+@click.option("--temperature", default=0.5, help="Temperature to use (ignored if --config is provided).")
+@click.option("--tracing", is_flag=True, help="Enable tracing (ignored if --config is provided).")
 @click.option("--max-steps-multiplier", default=15, help="Max steps multiplier.")
 @click.option("--timeout-multiplier", default=300, help="Timeout multiplier.")
 @make_sync
@@ -142,8 +145,10 @@ async def run(
     max_task_idx,
     task,
     n_task_combinations,
+    config,
     llm_provider,
     llm_model,
+    api_base,
     vision,
     reasoning,
     reflection,
@@ -156,7 +161,7 @@ async def run(
     env = AndroidEnvClient(env_url)
 
     try:
-        boot_environment(env, env_serial)
+        await boot_environment(env, env_serial)
     except Exception as e:
         logger.error(f"Error booting environment: {e}")
         logger.info(
@@ -184,9 +189,25 @@ async def run(
 
     logger.info(f"Found tasks: {', '.join(task_list)} ({len(task_list)})")
 
-    logger.debug(f"Loading LLM: {llm_provider} {llm_model} {temperature}")
-    llm = load_llm(llm_provider, model=llm_model, temperature=temperature)
-    logger.debug("LLM loaded successfully")
+    # Load config or use CLI parameters
+    droidrun_config = None
+    llm = None
+    
+    if config:
+        # Use config file - load DroidrunConfig
+        from droidrun.config_manager import DroidrunConfig
+        logger.info(f"Loading DroidRun config from: {config}")
+        droidrun_config = DroidrunConfig.from_yaml(config)
+        logger.info("Config loaded successfully. CLI LLM parameters will be ignored.")
+    else:
+        # Use CLI parameters - load single LLM
+        logger.debug(f"Loading LLM from CLI: {llm_provider} {llm_model} {temperature}")
+        llm_kwargs = {"model": llm_model, "temperature": temperature}
+        if api_base:
+            llm_kwargs["api_base"] = api_base
+            logger.debug(f"Using custom API base: {api_base}")
+        llm = load_llm(llm_provider, **llm_kwargs)
+        logger.debug("LLM loaded successfully from CLI parameters")
 
     for task_name in task_list:
         task_id = all_tasks.index(task_name)
@@ -194,7 +215,7 @@ async def run(
 
         for task_idx in range(num_tasks):
             try:
-                boot_environment(env, env_serial)
+                await boot_environment(env, env_serial)
             except Exception as e:
                 logger.error(f"Error booting environment: {e}")
                 logger.info(
@@ -217,6 +238,7 @@ async def run(
                 reflection,
                 tracing,
                 debug,
+                droidrun_config=droidrun_config,
             )
             if e:
                 logger.error(f"Error running task {task_name} {task_idx}: {e}")
